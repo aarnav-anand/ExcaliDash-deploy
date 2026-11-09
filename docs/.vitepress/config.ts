@@ -65,7 +65,10 @@ export default defineConfig({
       },
       {
         text: "Deploy",
-        items: [{ text: "Docker Compose", link: "/deploy/docker" }],
+        items: [
+          { text: "Docker Compose", link: "/deploy/docker" },
+          { text: "Render and Neon", link: "/deploy/render-neon" },
+        ],
       },
       {
         text: "Develop",
