@@ -68,11 +68,11 @@ slash nor `/api`. Docker Compose uses nginx to map `/api` to the backend; this
 split hosting deployment connects the browser directly to the backend. The
 application also uses that same URL for Socket.IO collaboration.
 
-The two default `onrender.com` hosts are same-site, so local-auth cookies work
-with the project's secure `SameSite=Lax` cookie settings. If you add custom
-domains, use subdomains of the same registered domain, such as
-`draw.example.com` and `api.draw.example.com`; then update both variables and
-redeploy.
+The backend detects HTTPS cross-origin browser requests and issues its auth and
+CSRF cookies as `SameSite=None; Secure`; this is required when the frontend and
+backend are distinct hosted subdomains. If you add custom domains, update both
+variables and redeploy. Using matching subdomains such as `draw.example.com`
+and `api.draw.example.com` is still recommended.
 
 ## 4. Confirm the database migration and health check
 
@@ -81,16 +81,30 @@ Open the backend's Render logs. On the first successful deployment, confirm:
 1. `Copying postgresql migrations...`
 2. `Running database migrations...`
 3. A healthy `/health` check.
-4. A line beginning `[BOOTSTRAP SETUP] One-time admin setup code:`.
-
-The setup code is deliberately printed only in backend logs. It expires after
-15 minutes and is consumed once. If it expires, redeploy the backend to issue a
-fresh code. Do not share the code or paste it into a public issue.
+The initial deployment does **not** print an administrator setup code. That is
+expected: first-run onboarding has not yet chosen whether to enable local
+authentication. The code is issued in the next step, after you select local
+authentication in the frontend.
 
 ## 5. Create the first administrator safely
 
-Open the frontend URL. Choose the local-account setup flow and create the first
-administrator using the one-time code from the backend log.
+Open the frontend URL. The first page is **Authentication setup**. Choose
+**Enable local authentication**. Do not choose disabled authentication for a
+public site.
+
+That choice creates the inactive bootstrap administrator and causes the backend
+to log a line beginning:
+
+```text
+[BOOTSTRAP SETUP] One-time admin setup code: XXXX-XXXX
+```
+
+Copy the code from the backend logs, return to the setup page, and create the
+first administrator with it. The code expires after 15 minutes and is consumed
+once. If it expires, request a new bootstrap-registration attempt from the
+setup page; if that cannot be completed, restart or redeploy the backend and
+start the setup flow again. Do not share the code or paste it into a public
+issue.
 
 Use a unique email address and a long password that satisfies the default
 policy: at least 12 characters with uppercase, lowercase, number, and symbol.
@@ -143,9 +157,10 @@ and sign in. This does not lose Neon-backed data.
 
 ### No administrator setup code appears
 
-Confirm `AUTH_MODE=local`, then inspect the first backend start after the
-database was initialized. The code appears only while there are no active users.
-If it expired before use, redeploy the backend to create a new code.
+Confirm `AUTH_MODE=local`. In the frontend, choose **Enable local
+authentication** on the Authentication setup page, then inspect the backend
+logs. The code appears only while there are no active users. If it expires,
+restart or redeploy the backend and start the setup flow again.
 
 ### Backend cannot connect to Neon
 

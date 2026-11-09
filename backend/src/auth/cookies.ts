@@ -49,10 +49,29 @@ const requestUsesHttps = (req: Request): boolean => {
 
 const shouldUseSecureCookies = (req: Request): boolean => requestUsesHttps(req);
 
+// A split deployment can serve the SPA and API from different hostnames. In
+// particular, hosted subdomains such as `*.onrender.com` can be treated as
+// cross-site by browsers. Lax cookies are then omitted from credentialed XHR,
+// preventing both local authentication and CSRF validation. Only use
+// SameSite=None when the browser explicitly makes an HTTPS cross-origin call;
+// same-origin and local-development flows retain the stricter Lax default.
+const shouldUseCrossSiteCookies = (req: Request): boolean => {
+  if (!requestUsesHttps(req)) return false;
+  const origin = req.headers.origin;
+  if (typeof origin !== "string" || origin.trim().length === 0) return false;
+  const host = req.get("host");
+  if (!host) return false;
+  try {
+    return new URL(origin).host.toLowerCase() !== host.toLowerCase();
+  } catch {
+    return false;
+  }
+};
+
 const baseCookieOptions = (req: Request) => ({
   httpOnly: true,
   secure: shouldUseSecureCookies(req),
-  sameSite: "lax" as const,
+  sameSite: shouldUseCrossSiteCookies(req) ? ("none" as const) : ("lax" as const),
   path: "/",
 });
 

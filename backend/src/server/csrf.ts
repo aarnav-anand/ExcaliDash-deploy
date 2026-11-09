@@ -58,11 +58,28 @@ export const registerCsrfProtection = ({
     value: string,
   ): void => {
     const secure = requestUsesHttps(req) ? "; Secure" : "";
+    const origin = req.headers.origin;
+    const host = req.get("host");
+    let sameSite = "Lax";
+    if (
+      secure &&
+      typeof origin === "string" &&
+      origin.trim().length > 0 &&
+      host
+    ) {
+      try {
+        if (new URL(origin).host.toLowerCase() !== host.toLowerCase()) {
+          sameSite = "None";
+        }
+      } catch {
+        // Keep the safer Lax default for malformed Origin headers.
+      }
+    }
     res.append(
       "Set-Cookie",
       `${CSRF_CLIENT_COOKIE_NAME}=${encodeURIComponent(
         value,
-      )}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${CSRF_CLIENT_COOKIE_MAX_AGE_SECONDS}${secure}`,
+      )}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${CSRF_CLIENT_COOKIE_MAX_AGE_SECONDS}${secure}`,
     );
   };
 
